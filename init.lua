@@ -43,6 +43,7 @@ vim.keymap.set('n', 'L', '$')
 vim.keymap.set('n', '<C-b>', '<cmd>NvimTreeToggle<CR>')
 vim.keymap.set('i', '<C-s>', '<cmd>w<CR><esc>')
 vim.keymap.set('i', 'jj', '<Esc>')
+vim.keymap.set('n', '<leader>gb', '<cmd>Gitsigns toggle_current_line_blame<CR>')
 ---------------------
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
@@ -457,7 +458,6 @@ require('lazy').setup({
   },
   {
     'github/copilot.vim',
-    lazy = false,
     init = function()
       vim.keymap.set('i', '<tab>', 'copilot#Accept("<CR>")', {
         noremap = true,
@@ -465,14 +465,12 @@ require('lazy').setup({
         expr = true,
         replace_keycodes = false,
       })
-
       vim.g.copilot_no_tab_map = true
       vim.g.copilot_assume_mapped = true
     end,
   },
   {
     'ThePrimeagen/harpoon',
-    lazy = false,
     branch = 'harpoon2',
     dependencies = { 'nvim-lua/plenary.nvim' },
     config = function()
@@ -502,14 +500,12 @@ require('lazy').setup({
   },
   {
     'kdheepak/lazygit.nvim',
-    lazy = false,
     dependencies = {
       'nvim-lua/plenary.nvim',
     },
   },
   {
     'rmagatti/auto-session',
-    lazy = false,
     config = function()
       require('auto-session').setup {
         log_level = 'error',
@@ -526,7 +522,6 @@ require('lazy').setup({
   {
     'nvim-tree/nvim-tree.lua',
     version = '*',
-    lazy = false,
     dependencies = {
       'nvim-tree/nvim-web-devicons',
     },
