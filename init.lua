@@ -15,16 +15,18 @@ vim.opt.updatetime = 250
 vim.opt.timeoutlen = 300
 vim.opt.splitright = true
 vim.opt.splitbelow = true
-vim.opt.list = true
-vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 vim.opt.inccommand = 'split'
 vim.opt.cursorline = true
 vim.opt.scrolloff = 10
 vim.opt.hlsearch = true
+vim.opt.termguicolors = true
+vim.opt.spell = true
+vim.opt.colorcolumn = '120'
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
 
 -- custom keymaps
 vim.keymap.set('n', '<C-s>', '<cmd>w<CR>')
-vim.keymap.set('i', 'jj', '<Esc>')
 vim.keymap.set('n', '<leader>oi', '<cmd> OrganizeImports <CR>')
 vim.keymap.set('n', '<C-a>', 'ggVG')
 vim.keymap.set('n', '<leader>v', '<cmd> vsplit <CR>')
@@ -36,6 +38,11 @@ vim.keymap.set('n', '<C-right>', '<cmd>vertical resize +5<CR>')
 vim.keymap.set('n', '<C-up>', '<cmd>resize -5<CR>')
 vim.keymap.set('n', '<C-down>', '<cmd>resize +5<CR>')
 vim.keymap.set('x', '<leader>p', '"_dP')
+vim.keymap.set('n', 'H', '^')
+vim.keymap.set('n', 'L', '$')
+vim.keymap.set('n', '<C-b>', '<cmd>NvimTreeToggle<CR>')
+vim.keymap.set('i', '<C-s>', '<cmd>w<CR><esc>')
+vim.keymap.set('i', 'jj', '<Esc>')
 ---------------------
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
@@ -109,7 +116,7 @@ require('lazy').setup({
           return vim.fn.executable 'make' == 1
         end,
       },
-      { 'nvim-telescope/telescope-ui-select.nvim' },
+      -- { 'nvim-telescope/telescope-ui-select.nvim' },
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
       { 'nvim-telescope/telescope-file-browser.nvim' },
     },
@@ -127,11 +134,14 @@ require('lazy').setup({
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
-      vim.keymap.set('n', '<C-b>', ':Telescope file_browser path=%:p:h select_buffer=true<CR>', { desc = 'Telescope file browser' })
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
-      vim.keymap.set('n', '<C-p>', builtin.git_files, { desc = 'git files' })
+      vim.keymap.set('n', '<C-p>', function()
+        builtin.git_files {
+          previewer = false,
+        }
+      end, { desc = 'git files' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
@@ -256,6 +266,7 @@ require('lazy').setup({
         'stylua', -- Used to format Lua code
         'tsserver',
         'eslint',
+        'cspell',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -299,7 +310,7 @@ require('lazy').setup({
       conform.setup(opts)
 
       -- Customize prettier args
-      require('conform.formatters.prettier').args = function(_self, ctx)
+      require('conform.formatters.prettier').args = function(self, ctx)
         local prettier_roots = { '~/.config/prettier-config.json' }
         local args = { '--stdin-filepath', '$FILENAME' }
 
@@ -375,34 +386,53 @@ require('lazy').setup({
       }
     end,
   },
-
   {
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
+    'catppuccin/nvim',
+    name = 'catppuccin',
+    priority = 1000,
     init = function()
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'catppuccin-mocha'
       vim.cmd.hi 'Comment gui=none'
     end,
   },
-
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
-
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
       require('mini.ai').setup { n_lines = 500 }
-      -- Add/delete/replace surroundings (brackets, quotes, etc.)
-      --
-      -- - saiw) - [S]urround [A]dd [I]nner [W]ord [)]Paren
-      -- - sd'   - [S]urround [D]elete [']quotes
-      -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
-      local statusline = require 'mini.statusline'
-      statusline.setup { use_icons = vim.g.have_nerd_font }
-      ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_location = function()
-        return '%2l:%-2v'
-      end
+    end,
+  },
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('lualine').setup {
+        options = {
+          theme = 'auto',
+          section_separators = { '', '' },
+          component_separators = { '', '' },
+        },
+        sections = {
+          lualine_a = { 'mode' },
+          lualine_b = { 'branch' },
+          lualine_c = {
+            {
+              'filename',
+              path = 1,
+              symbols = {
+                modified = '[+]', -- Text to show when the file is modified.
+                readonly = '[-]', -- Text to show when the file is non-modifiable or readonly.
+                unnamed = '[No Name]', -- Text to show for unnamed buffers.
+                newfile = '[New]', -- Text to show for newly created file before first write
+              },
+            },
+          },
+          lualine_x = {},
+          lualine_y = {},
+          lualine_z = { 'location' },
+        },
+      }
     end,
   },
   { -- Highlight, edit, and navigate code
@@ -421,6 +451,9 @@ require('lazy').setup({
       ---@diagnostic disable-next-line: missing-fields
       require('nvim-treesitter.configs').setup(opts)
     end,
+  },
+  {
+    'nvim-treesitter/nvim-treesitter-context',
   },
   {
     'github/copilot.vim',
@@ -487,6 +520,23 @@ require('lazy').setup({
         auto_session_root_dir = vim.fn.stdpath 'data' .. '/sessions/',
         auto_session_enabled = true,
         auto_session_last_session_dir = vim.fn.stdpath 'data' .. '/sessions/last_session',
+      }
+    end,
+  },
+  {
+    'nvim-tree/nvim-tree.lua',
+    version = '*',
+    lazy = false,
+    dependencies = {
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function()
+      require('nvim-tree').setup {
+        actions = {
+          open_file = {
+            quit_on_open = true,
+          },
+        },
       }
     end,
   },
