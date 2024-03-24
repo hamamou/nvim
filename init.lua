@@ -24,6 +24,9 @@ vim.opt.spell = true
 vim.opt.colorcolumn = '120'
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
+vim.opt.expandtab = true
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
 
 -- custom keymaps
 vim.keymap.set('n', '<C-s>', '<cmd>w<CR>')
@@ -38,8 +41,9 @@ vim.keymap.set('n', '<C-right>', '<cmd>vertical resize +5<CR>')
 vim.keymap.set('n', '<C-up>', '<cmd>resize -5<CR>')
 vim.keymap.set('n', '<C-down>', '<cmd>resize +5<CR>')
 vim.keymap.set('x', '<leader>p', '"_dP')
-vim.keymap.set('n', 'H', '^')
-vim.keymap.set('n', 'L', '$')
+vim.keymap.set({ 'n', 'i' }, 'H', '^')
+vim.keymap.set({ 'n', 'v' }, 'L', '$')
+vim.keymap.set('v', 'L', '$')
 vim.keymap.set('n', '<C-b>', '<cmd>NvimTreeToggle<CR>')
 vim.keymap.set('i', '<C-s>', '<cmd>w<CR><esc>')
 vim.keymap.set('i', 'jj', '<Esc>')
@@ -74,8 +78,17 @@ end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup {
-  'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
-  { 'numToStr/Comment.nvim', opts = {} },
+  'tpope/vim-sleuth',
+  {
+    'numToStr/Comment.nvim',
+    dependencies = 'JoosepAlviste/nvim-ts-context-commentstring',
+    config = function()
+      require('Comment').setup {
+        pre_hook = require('ts_context_commentstring.integrations.comment_nvim').create_pre_hook(),
+      }
+    end,
+    opts = {},
+  },
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
     opts = {
@@ -170,7 +183,6 @@ require('lazy').setup {
   { -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
     dependencies = {
-      -- Automatically install LSPs and related tools to stdpath for Neovim
       'williamboman/mason.nvim',
       'williamboman/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
@@ -194,9 +206,6 @@ require('lazy').setup {
           map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
           map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
           map('K', vim.lsp.buf.hover, 'Hover Documentation')
-
-          -- WARN: This is not Goto Definition, this is Goto Declaration.
-          --  For example, in C this would take you to the header.
           map('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
 
           -- The following two autocommands are used to highlight references of the
@@ -282,8 +291,7 @@ require('lazy').setup {
       }
     end,
   },
-
-  { -- Autoformat
+  {
     'stevearc/conform.nvim',
     opts = {
       notify_on_error = false,
@@ -309,24 +317,17 @@ require('lazy').setup {
     config = function(_, opts)
       local conform = require 'conform'
       conform.setup(opts)
-
-      -- Customize prettier args
+      ---@diagnostic disable-next-line: unused-local
       require('conform.formatters.prettier').args = function(self, ctx)
-        local prettier_roots = { '~/.config/prettier-config.json' }
-        local args = { '--stdin-filepath', '$FILENAME' }
-
-        local localPrettierConfig = vim.fs.find(prettier_roots, {
-          upward = true,
-          path = ctx.dirname,
-          type = 'file',
-        })[1]
-
-        -- Project config takes precedence over global config
-        if localPrettierConfig then
-          vim.list_extend(args, { '--config', localPrettierConfig })
-        end
-
-        return args
+        return {
+          '--stdin-filepath',
+          '$FILENAME',
+          '--print-width=120',
+          '--tab-width=4',
+          '--single-quote=true',
+          '--bracket-spacing=false',
+          '--end-of-line=auto',
+        }
       end
     end,
   },
@@ -458,16 +459,6 @@ require('lazy').setup {
   },
   {
     'github/copilot.vim',
-    init = function()
-      vim.keymap.set('i', '<tab>', 'copilot#Accept("<CR>")', {
-        noremap = true,
-        silent = true,
-        expr = true,
-        replace_keycodes = false,
-      })
-      vim.g.copilot_no_tab_map = true
-      vim.g.copilot_assume_mapped = true
-    end,
   },
   {
     'ThePrimeagen/harpoon',
@@ -484,18 +475,12 @@ require('lazy').setup {
       vim.keymap.set('n', '<leader>a', function()
         harpoon:list():append()
       end)
-      vim.keymap.set('n', '<A-1>', function()
-        harpoon:list():select(1)
-      end)
-      vim.keymap.set('n', '<A-2>', function()
-        harpoon:list():select(2)
-      end)
-      vim.keymap.set('n', '<A-3>', function()
-        harpoon:list():select(3)
-      end)
-      vim.keymap.set('n', '<A-4>', function()
-        harpoon:list():select(4)
-      end)
+
+      for _, key in ipairs { '1', '2', '3', '4', '5' } do
+        vim.keymap.set('n', '<A-' .. key .. '>', function()
+          harpoon:list():select(tonumber(key))
+        end)
+      end
     end,
   },
   {
@@ -527,6 +512,19 @@ require('lazy').setup {
     },
     config = function()
       require('nvim-tree').setup {
+        view = {
+          width = 50,
+        },
+        renderer = {
+          group_empty = true,
+        },
+        filters = {
+          dotfiles = true,
+          custom = { 'node_modules', 'dist' },
+        },
+        update_focused_file = {
+          enable = true,
+        },
         actions = {
           open_file = {
             quit_on_open = true,
